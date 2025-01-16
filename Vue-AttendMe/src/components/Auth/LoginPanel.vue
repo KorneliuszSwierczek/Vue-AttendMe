@@ -24,10 +24,31 @@
             required
           />
         </div>
+        <div v-if="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
         <button type="submit" class="btn btn-primary">Zaloguj</button>
-        <button type="button" class="btn btn-secondary" @click="scanQRCode">
-          Skanuj obecność
+
+        <!-- Sekcja testowa -->
+        <select v-model="exampleId" @change="result = undefined" style="margin-top: 1rem; padding: 0.5rem">
+          <option :value="null">- Wybierz akcję testową -</option>
+          <option :value="0">WYKŁADOWCA: Logowanie</option>
+          <option :value="1">WYKŁADOWCA: Lista zajęć</option>
+          <option :value="2">STUDENT: Logowanie</option>
+          <option :value="3">STUDENT: Lista zajęć</option>
+        </select>
+        <button
+          v-if="exampleId !== null"
+          @click="callExample(exampleId)"
+          style="padding: 0.5rem; margin-top: 1rem"
+        >
+          Wykonaj test
         </button>
+
+        <div v-if="result" style="margin-top: 1rem">
+          <p>Odpowiedź serwera:</p>
+          <pre>{{ result }}</pre>
+        </div>
       </form>
       <footer>
         <small>&copy; 2025 true-vue</small>
@@ -38,28 +59,62 @@
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
+import { AttendMeBackendClient } from '../../backend/AttendMeBackendClient'; // Ustaw ścieżkę poprawnie
 
 export default defineComponent({
   name: 'LoginPanel',
   setup() {
     const username = ref('');
     const password = ref('');
+    const errorMessage = ref('');
+    const result = ref<unknown>(); // Bezpieczniejszy typ zamiast any
 
-    const handleLogin = () => {
-      console.log('Logging in with', username.value, password.value);
-      // Tu można dodać logikę do obsługi logowania
+    const exampleId = ref<number | null>(null);
+
+    const client = new AttendMeBackendClient('http://localhost:3000'); // Zmień URL na właściwy
+
+    const handleLogin = async () => {
+      try {
+        errorMessage.value = ''; // Reset błędu
+        const tokenResult = await client.userLogin(username.value, password.value);
+        console.log('Zalogowano:', tokenResult);
+        alert('Logowanie zakończone sukcesem!');
+      } catch (error) {
+        console.error('Błąd logowania:', error);
+        errorMessage.value = 'Nieprawidłowy login lub hasło.';
+      }
     };
 
-    const scanQRCode = () => {
-      console.log('Scanning QR Code');
-      alert('Funkcja skanowania w przygotowaniu!');
+    const examples = [
+      () => client.userLogin('teacher', 'password123').then((r) => (result.value = r)),
+      () =>
+        client
+          .courseTeacherSessionsGet({ pageNumber: 1, pageSize: 99999 })
+          .then((r) => (result.value = r)),
+      () => client.userLogin('student', '12345').then((r) => (result.value = r)),
+      () =>
+        client
+          .courseStudentSessionsGet({ pageNumber: 1, pageSize: 99999 })
+          .then((r) => (result.value = r)),
+    ];
+
+    const callExample = (id: number) => {
+      examples[id]()
+        .then(() => console.log('Test zakończony'))
+        .catch((err) => {
+          console.error('Błąd:', err);
+          result.value = err;
+        });
     };
 
     return {
       username,
       password,
+      errorMessage,
       handleLogin,
-      scanQRCode,
+      result,
+      exampleId,
+      callExample,
     };
   },
 });
@@ -142,5 +197,11 @@ footer {
   margin-top: 20px;
   font-size: 12px;
   color: #aaa;
+}
+
+.error-message {
+  color: red;
+  margin-top: 10px;
+  font-size: 14px;
 }
 </style>
