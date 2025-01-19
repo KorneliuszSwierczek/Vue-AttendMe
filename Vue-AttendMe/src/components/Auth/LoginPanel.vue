@@ -28,27 +28,6 @@
           {{ errorMessage }}
         </div>
         <button type="submit" class="btn btn-primary">Zaloguj</button>
-
-        <!-- Sekcja testowa -->
-        <select v-model="exampleId" @change="result = undefined" style="margin-top: 1rem; padding: 0.5rem">
-          <option :value="null">- Wybierz akcję testową -</option>
-          <option :value="0">WYKŁADOWCA: Logowanie</option>
-          <option :value="1">WYKŁADOWCA: Lista zajęć</option>
-          <option :value="2">STUDENT: Logowanie</option>
-          <option :value="3">STUDENT: Lista zajęć</option>
-        </select>
-        <button
-          v-if="exampleId !== null"
-          @click="callExample(exampleId)"
-          style="padding: 0.5rem; margin-top: 1rem"
-        >
-          Wykonaj test
-        </button>
-
-        <div v-if="result" style="margin-top: 1rem">
-          <p>Odpowiedź serwera:</p>
-          <pre>{{ result }}</pre>
-        </div>
       </form>
       <footer>
         <small>&copy; 2025 true-vue</small>
@@ -59,7 +38,8 @@
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
-import { AttendMeBackendClient } from '../../backend/AttendMeBackendClient'; // Ustaw ścieżkę poprawnie
+import { useRouter } from 'vue-router';
+import { AttendMeBackendClient } from '../../backend/AttendMeBackendClient';
 
 export default defineComponent({
   name: 'LoginPanel',
@@ -67,44 +47,36 @@ export default defineComponent({
     const username = ref('');
     const password = ref('');
     const errorMessage = ref('');
-    const result = ref<unknown>(); // Bezpieczniejszy typ zamiast any
+    const router = useRouter();
 
-    const exampleId = ref<number | null>(null);
-
-    const client = new AttendMeBackendClient('http://localhost:3000'); // Zmień URL na właściwy
+    const client = new AttendMeBackendClient('http://localhost:5173'); // Ustaw właściwy URL
 
     const handleLogin = async () => {
       try {
         errorMessage.value = ''; // Reset błędu
+
+        // Logowanie użytkownika
         const tokenResult = await client.userLogin(username.value, password.value);
         console.log('Zalogowano:', tokenResult);
-        alert('Logowanie zakończone sukcesem!');
+
+        // Sprawdzenie roli użytkownika na podstawie loginu
+        if (username.value === 'su') {
+          alert('Zalogowano jako Admin!');
+          // Przekierowanie na odpowiedni dashboard (jeśli istnieje)
+          await router.push('/admin-dashboard');
+        } else if (username.value === 'pk') {
+          alert('Zalogowano jako Wykładowca!');
+          await router.push('/lecturer-dashboard');
+        } else if (username.value.startsWith('stu')) {
+          alert('Zalogowano jako Student!');
+          await router.push('/student-dashboard');
+        } else {
+          alert('Rola użytkownika nieznana!');
+        }
       } catch (error) {
         console.error('Błąd logowania:', error);
         errorMessage.value = 'Nieprawidłowy login lub hasło.';
       }
-    };
-
-    const examples = [
-      () => client.userLogin('teacher', 'password123').then((r) => (result.value = r)),
-      () =>
-        client
-          .courseTeacherSessionsGet({ pageNumber: 1, pageSize: 99999 })
-          .then((r) => (result.value = r)),
-      () => client.userLogin('student', '12345').then((r) => (result.value = r)),
-      () =>
-        client
-          .courseStudentSessionsGet({ pageNumber: 1, pageSize: 99999 })
-          .then((r) => (result.value = r)),
-    ];
-
-    const callExample = (id: number) => {
-      examples[id]()
-        .then(() => console.log('Test zakończony'))
-        .catch((err) => {
-          console.error('Błąd:', err);
-          result.value = err;
-        });
     };
 
     return {
@@ -112,9 +84,6 @@ export default defineComponent({
       password,
       errorMessage,
       handleLogin,
-      result,
-      exampleId,
-      callExample,
     };
   },
 });
@@ -181,11 +150,6 @@ button {
 
 button.btn-primary {
   background-color: #007bff;
-  color: white;
-}
-
-button.btn-secondary {
-  background-color: #28a745;
   color: white;
 }
 

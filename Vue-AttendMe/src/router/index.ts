@@ -1,16 +1,31 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import Login from '../components/Auth/LoginPanel.vue';
-import StudentDashboard from '../components/StudentDashboard/StudentDashboard.vue';
-import LecturerDashboard from '../components/LecturerDashboard/LecturerDashboard.vue';
 
 const routes = [
-  { path: '/', component: Login },
-  { path: '/student-dashboard', component: StudentDashboard },
-  { path: '/lecturer-dashboard', component: LecturerDashboard },
+  // Strona logowania
+  {
+    path: '/',
+    name: 'login',
+    component: () => import('../components/Auth/LoginPanel.vue'), // Lazy-loading komponentu
+  },
+  // Dashboard studenta
+  {
+    path: '/student-dashboard',
+    name: 'student-dashboard',
+    component: () =>
+      import('../components/StudentDashboard/StudentDashboard.vue'), // Lazy-loading komponentu
+  },
+  // Dashboard wykładowcy
+  {
+    path: '/lecturer-dashboard',
+    name: 'lecturer-dashboard',
+    component: () =>
+      import('../components/LecturerDashboard/LecturerDashboard.vue'), // Lazy-loading komponentu
+  },
+ 
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(), // Używa historii HTML5
   routes,
 });
 
